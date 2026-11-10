@@ -34,7 +34,7 @@ No Windows, os scripts `.sh` rodam pelo Git Bash ou pelo WSL.
 
 ## Sobre
 
-Trabalhei como freelancer para uma consultoria de implantação do Sankhya, desenvolvendo extensões Java (botões de ação, eventos programáveis), consultas, dashboards e relatórios para empresas de diferentes ramos. Este repositório reúne versões novas de soluções desse tipo, para mostrar como eu resolvo esses problemas hoje, com testes e documentação.
+Trabalhei como desenvolvedor para uma consultoria de implantação/suporte do sistema Sankhya, desenvolvendo extensões Java (botões de ação, eventos programáveis), consultas, dashboards e relatórios para empresas de diferentes ramos. Este repositório reúne versões novas de soluções desse tipo, para mostrar como eu resolvo esses problemas hoje, com testes e documentação.
 
 Desenvolvido com apoio de IA (Claude Code, com revisão do Codex). As decisões técnicas e a validação são minhas.
 
