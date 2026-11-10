@@ -1,0 +1,33 @@
+plugins {
+    id 'application'
+}
+
+repositories {
+    mavenCentral()
+}
+
+// Ferramenta de desenvolvimento (não roda no ERP): Java 11 basta.
+tasks.withType(JavaCompile).configureEach {
+    options.release = 11
+    options.encoding = 'UTF-8'
+}
+
+dependencies {
+    implementation 'net.sf.jasperreports:jasperreports:6.21.3'
+    implementation 'net.sf.jasperreports:jasperreports-fonts:6.21.3'
+    runtimeOnly 'org.postgresql:postgresql:42.7.4'
+}
+
+application {
+    mainClass = 'io.github.dqueir0z.erp.jasper.GerarExemplo'
+    applicationDefaultJvmArgs = ['-Djava.awt.headless=true']
+}
+
+// ./gradlew :jasper:gerador:run gera jasper/exemplos/*.pdf e *.png a partir do banco de exemplo.
+run {
+    def raiz = rootProject.projectDir
+    args = [
+        new File(raiz, 'jasper/relatorios/clientes_sem_movimentacao.jrxml').path,
+        new File(raiz, 'jasper/exemplos').path
+    ]
+}

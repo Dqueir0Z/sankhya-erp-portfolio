@@ -1,0 +1,247 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Clientes sem movimentação (JasperReports 6 / iReport / Jaspersoft Studio).
+  Mesma regra de sql/consultas/clientes_sem_movimentacao.sql, com os parâmetros no formato do
+  Jasper. Os CAST deixam o tipo explícito para o driver JDBC (Oracle e PostgreSQL).
+  Agrupa por faixa (crítico, alerta, sem compras) e conta os clientes de cada uma.
+-->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd"
+              name="clientes_sem_movimentacao" pageWidth="595" pageHeight="842" columnWidth="535"
+              leftMargin="30" rightMargin="30" topMargin="30" bottomMargin="30"
+              whenNoDataType="AllSectionsNoDetail">
+
+    <style name="Base" isDefault="true" fontName="DejaVu Sans" fontSize="8"/>
+    <style name="Cabecalho" style="Base" forecolor="#64748B" fontSize="7" isBold="true"/>
+    <style name="Linha" style="Base">
+        <conditionalStyle>
+            <conditionExpression><![CDATA[$V{REPORT_COUNT} % 2 == 0]]></conditionExpression>
+            <style mode="Opaque" backcolor="#F8FAFC"/>
+        </conditionalStyle>
+    </style>
+    <style name="Faixa" style="Base" fontSize="10" isBold="true">
+        <conditionalStyle>
+            <conditionExpression><![CDATA["CRITICO".equals($F{FAIXA})]]></conditionExpression>
+            <style forecolor="#B91C1C"/>
+        </conditionalStyle>
+        <conditionalStyle>
+            <conditionExpression><![CDATA["ALERTA".equals($F{FAIXA})]]></conditionExpression>
+            <style forecolor="#B45309"/>
+        </conditionalStyle>
+        <conditionalStyle>
+            <conditionExpression><![CDATA["SEM COMPRAS".equals($F{FAIXA})]]></conditionExpression>
+            <style forecolor="#475569"/>
+        </conditionalStyle>
+    </style>
+
+    <parameter name="DATA_REF" class="java.util.Date">
+        <defaultValueExpression><![CDATA[new java.util.Date()]]></defaultValueExpression>
+    </parameter>
+    <parameter name="DIAS_ALERTA" class="java.lang.Integer">
+        <defaultValueExpression><![CDATA[75]]></defaultValueExpression>
+    </parameter>
+    <parameter name="DIAS_CRITICO" class="java.lang.Integer">
+        <defaultValueExpression><![CDATA[90]]></defaultValueExpression>
+    </parameter>
+    <parameter name="CODEMP" class="java.lang.Integer"/>
+
+    <queryString language="SQL"><![CDATA[
+WITH vendas AS (
+    SELECT cab.CODPARC, cab.DTNEG, cab.VLRNOTA, cab.CODEMP,
+           ROW_NUMBER() OVER (PARTITION BY cab.CODPARC
+                              ORDER BY cab.DTNEG DESC, cab.NUNOTA DESC) AS ORDEM
+      FROM TGFCAB cab
+     WHERE cab.TIPMOV = 'V'
+       AND cab.STATUSNOTA = 'L'
+       AND cab.DTNEG <= CAST($P{DATA_REF} AS DATE)
+       AND (CAST($P{CODEMP} AS INTEGER) IS NULL OR cab.CODEMP = CAST($P{CODEMP} AS INTEGER))
+),
+situacao AS (
+    SELECT par.CODPARC, par.NOMEPARC,
+           ven.APELIDO                               AS VENDEDOR,
+           ult.DTNEG                                 AS DT_ULTIMA_VENDA,
+           CAST($P{DATA_REF} AS DATE) - ult.DTNEG    AS DIAS_SEM_COMPRA,
+           ult.VLRNOTA                               AS VLR_ULTIMA_VENDA,
+           emp.RAZAOABREV                            AS EMPRESA_ULTIMA_VENDA
+      FROM TGFPAR par
+      LEFT JOIN vendas ult ON ult.CODPARC = par.CODPARC AND ult.ORDEM = 1
+      LEFT JOIN TGFVEN ven ON ven.CODVEND = par.CODVEND
+      LEFT JOIN TSIEMP emp ON emp.CODEMP = ult.CODEMP
+     WHERE par.ATIVO = 'S'
+       AND par.CLIENTE = 'S'
+)
+SELECT sit.CODPARC, sit.NOMEPARC, sit.VENDEDOR, sit.DT_ULTIMA_VENDA, sit.DIAS_SEM_COMPRA,
+       sit.VLR_ULTIMA_VENDA, sit.EMPRESA_ULTIMA_VENDA,
+       CASE
+           WHEN sit.DT_ULTIMA_VENDA IS NULL THEN 'SEM COMPRAS'
+           WHEN sit.DIAS_SEM_COMPRA > CAST($P{DIAS_CRITICO} AS INTEGER) THEN 'CRITICO'
+           ELSE 'ALERTA'
+       END AS FAIXA
+  FROM situacao sit
+ WHERE sit.DT_ULTIMA_VENDA IS NULL
+    OR sit.DIAS_SEM_COMPRA >= CAST($P{DIAS_ALERTA} AS INTEGER)
+ ORDER BY CASE
+              WHEN sit.DT_ULTIMA_VENDA IS NULL THEN 3
+              WHEN sit.DIAS_SEM_COMPRA > CAST($P{DIAS_CRITICO} AS INTEGER) THEN 1
+              ELSE 2
+          END,
+          sit.DIAS_SEM_COMPRA DESC,
+          sit.NOMEPARC
+]]></queryString>
+
+    <field name="CODPARC" class="java.lang.Integer"/>
+    <field name="NOMEPARC" class="java.lang.String"/>
+    <field name="VENDEDOR" class="java.lang.String"/>
+    <field name="DT_ULTIMA_VENDA" class="java.util.Date"/>
+    <field name="DIAS_SEM_COMPRA" class="java.lang.Integer"/>
+    <field name="VLR_ULTIMA_VENDA" class="java.math.BigDecimal"/>
+    <field name="EMPRESA_ULTIMA_VENDA" class="java.lang.String"/>
+    <field name="FAIXA" class="java.lang.String"/>
+
+    <variable name="CLIENTES_FAIXA" class="java.lang.Integer" resetType="Group" resetGroup="Faixa" calculation="Count">
+        <variableExpression><![CDATA[$F{CODPARC}]]></variableExpression>
+    </variable>
+
+    <group name="Faixa">
+        <groupExpression><![CDATA[$F{FAIXA}]]></groupExpression>
+        <groupHeader>
+            <band height="44">
+                <textField>
+                    <reportElement style="Faixa" x="0" y="10" width="535" height="16"/>
+                    <textFieldExpression><![CDATA["CRITICO".equals($F{FAIXA}) ? "Crítico: mais de " + $P{DIAS_CRITICO} + " dias sem comprar"
+    : "ALERTA".equals($F{FAIXA}) ? "Alerta: de " + $P{DIAS_ALERTA} + " a " + $P{DIAS_CRITICO} + " dias sem comprar"
+    : "Sem compras: nenhuma venda confirmada até a referência" + ($P{CODEMP} == null ? "" : " nesta empresa")]]></textFieldExpression>
+                </textField>
+                <staticText>
+                    <reportElement style="Cabecalho" x="0" y="30" width="185" height="12"/>
+                    <text><![CDATA[CLIENTE]]></text>
+                </staticText>
+                <staticText>
+                    <reportElement style="Cabecalho" x="185" y="30" width="75" height="12"/>
+                    <text><![CDATA[VENDEDOR]]></text>
+                </staticText>
+                <staticText>
+                    <reportElement style="Cabecalho" x="260" y="30" width="65" height="12"/>
+                    <textElement textAlignment="Center"/>
+                    <text><![CDATA[ÚLTIMA VENDA]]></text>
+                </staticText>
+                <staticText>
+                    <reportElement style="Cabecalho" x="325" y="30" width="40" height="12"/>
+                    <textElement textAlignment="Right"/>
+                    <text><![CDATA[DIAS]]></text>
+                </staticText>
+                <staticText>
+                    <reportElement style="Cabecalho" x="365" y="30" width="70" height="12"/>
+                    <textElement textAlignment="Right"/>
+                    <text><![CDATA[VALOR (R$)]]></text>
+                </staticText>
+                <staticText>
+                    <reportElement style="Cabecalho" x="445" y="30" width="90" height="12"/>
+                    <text><![CDATA[EMPRESA]]></text>
+                </staticText>
+                <line>
+                    <reportElement x="0" y="43" width="535" height="1" forecolor="#CBD5E1"/>
+                </line>
+            </band>
+        </groupHeader>
+        <groupFooter>
+            <band height="18">
+                <textField>
+                    <reportElement style="Base" x="0" y="3" width="535" height="12" forecolor="#64748B"/>
+                    <textElement textAlignment="Right">
+                        <font isItalic="true"/>
+                    </textElement>
+                    <textFieldExpression><![CDATA[$V{CLIENTES_FAIXA} + ($V{CLIENTES_FAIXA} == 1 ? " cliente" : " clientes")]]></textFieldExpression>
+                </textField>
+            </band>
+        </groupFooter>
+    </group>
+
+    <title>
+        <band height="58">
+            <rectangle>
+                <reportElement x="0" y="0" width="4" height="40" backcolor="#0F766E" forecolor="#0F766E"/>
+            </rectangle>
+            <staticText>
+                <reportElement style="Base" x="12" y="0" width="400" height="22" forecolor="#0F172A"/>
+                <textElement>
+                    <font size="16" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Clientes sem movimentação]]></text>
+            </staticText>
+            <textField>
+                <reportElement style="Base" x="12" y="24" width="523" height="14" forecolor="#475569"/>
+                <textFieldExpression><![CDATA["Referência: " + new java.text.SimpleDateFormat("dd/MM/yyyy").format($P{DATA_REF})
+    + "  ·  alerta a partir de " + $P{DIAS_ALERTA} + " dias  ·  crítico acima de " + $P{DIAS_CRITICO} + " dias"
+    + ($P{CODEMP} == null ? "  ·  todas as empresas" : "  ·  empresa " + $P{CODEMP})]]></textFieldExpression>
+            </textField>
+        </band>
+    </title>
+
+    <detail>
+        <band height="16">
+            <frame>
+                <reportElement style="Linha" x="0" y="0" width="535" height="16"/>
+                <textField>
+                    <reportElement style="Base" x="4" y="2" width="181" height="12"/>
+                    <textFieldExpression><![CDATA[$F{CODPARC} + " - " + $F{NOMEPARC}]]></textFieldExpression>
+                </textField>
+                <textField isBlankWhenNull="true">
+                    <reportElement style="Base" x="185" y="2" width="75" height="12"/>
+                    <textFieldExpression><![CDATA[$F{VENDEDOR}]]></textFieldExpression>
+                </textField>
+                <textField pattern="dd/MM/yyyy" isBlankWhenNull="true">
+                    <reportElement style="Base" x="260" y="2" width="65" height="12"/>
+                    <textElement textAlignment="Center"/>
+                    <textFieldExpression><![CDATA[$F{DT_ULTIMA_VENDA}]]></textFieldExpression>
+                </textField>
+                <textField isBlankWhenNull="true">
+                    <reportElement style="Base" x="325" y="2" width="40" height="12"/>
+                    <textElement textAlignment="Right">
+                        <font isBold="true"/>
+                    </textElement>
+                    <textFieldExpression><![CDATA[$F{DIAS_SEM_COMPRA}]]></textFieldExpression>
+                </textField>
+                <textField pattern="#,##0.00" isBlankWhenNull="true">
+                    <reportElement style="Base" x="365" y="2" width="70" height="12"/>
+                    <textElement textAlignment="Right"/>
+                    <textFieldExpression><![CDATA[$F{VLR_ULTIMA_VENDA}]]></textFieldExpression>
+                </textField>
+                <textField isBlankWhenNull="true">
+                    <reportElement style="Base" x="445" y="2" width="90" height="12"/>
+                    <textFieldExpression><![CDATA[$F{EMPRESA_ULTIMA_VENDA}]]></textFieldExpression>
+                </textField>
+            </frame>
+        </band>
+    </detail>
+
+    <pageFooter>
+        <band height="20">
+            <line>
+                <reportElement x="0" y="2" width="535" height="1" forecolor="#E2E8F0"/>
+            </line>
+            <staticText>
+                <reportElement style="Base" x="0" y="6" width="300" height="12" forecolor="#94A3B8"/>
+                <text><![CDATA[Dados fictícios de demonstração]]></text>
+            </staticText>
+            <textField>
+                <reportElement style="Base" x="435" y="6" width="100" height="12" forecolor="#94A3B8"/>
+                <textElement textAlignment="Right"/>
+                <textFieldExpression><![CDATA["Página " + $V{PAGE_NUMBER}]]></textFieldExpression>
+            </textField>
+        </band>
+    </pageFooter>
+
+    <summary>
+        <band height="30">
+            <textField>
+                <reportElement style="Base" x="0" y="10" width="535" height="14" forecolor="#0F172A"/>
+                <textElement>
+                    <font size="9" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA["Total: " + $V{REPORT_COUNT} + ($V{REPORT_COUNT} == 1 ? " cliente" : " clientes")]]></textFieldExpression>
+            </textField>
+        </band>
+    </summary>
+</jasperReport>
