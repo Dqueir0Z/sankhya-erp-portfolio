@@ -1,0 +1,14 @@
+rootProject.name = 'sankhya-erp-portfolio'
+
+// Regra de negócio em Java puro: compila e testa em qualquer máquina.
+include 'java:nfe-core'
+
+// Gera o PDF de exemplo do relatório Jasper a partir do banco de demonstração.
+include 'jasper:gerador'
+
+// Extensões do Sankhya: só entram no build quando o caminho dos jars do ERP é informado
+// (./gradlew build -PsankhyaLibs=C:/caminho/dos/jars). Os jars são proprietários e não
+// fazem parte deste repositório.
+if (providers.gradleProperty('sankhyaLibs').isPresent()) {
+    include 'java:nfe-sankhya'
+}

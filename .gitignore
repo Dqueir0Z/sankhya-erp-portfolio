@@ -1,0 +1,16 @@
+# Gradle
+.gradle/
+build/
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+
+# Jars do Sankhya: proprietários, nunca versionar
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# Sistema
+.DS_Store
+Thumbs.db
