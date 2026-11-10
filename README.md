@@ -1,6 +1,6 @@
 # Sankhya ERP: portfólio de personalizações
 
-Exemplos do tipo de trabalho que fiz como desenvolvedor freelancer de personalizações para o ERP **Sankhya**: extensões em **Java**, consultas **SQL** e relatórios **JasperReports**.
+Exemplos do tipo de trabalho que fiz como desenvolvedor Back End de personalizações para o ERP **Sankhya**: extensões em **Java**, consultas **SQL** e relatórios **JasperReports**.
 
 Tudo aqui foi **reescrito do zero a partir dos requisitos**, com dados inventados. Não há código, layout, regra comercial nem dado de nenhum cliente.
 
