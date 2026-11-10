@@ -1,0 +1,28 @@
+plugins {
+    id 'java'
+}
+
+repositories {
+    mavenCentral()
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 8
+    options.encoding = 'UTF-8'
+    options.compilerArgs << '-Xlint:-options'
+}
+
+// Pasta com os jars da instalação do Sankhya (não versionados: são proprietários).
+// Uso: ./gradlew :java:nfe-sankhya:jar -PsankhyaLibs=C:/caminho/dos/jars
+def sankhyaLibs = providers.gradleProperty('sankhyaLibs').get()
+
+dependencies {
+    implementation project(':java:nfe-core')
+    compileOnly fileTree(dir: sankhyaLibs, include: '**/*.jar')
+}
+
+// O Sankhya carrega a extensão a partir de um único jar: o núcleo vai junto.
+jar {
+    archiveBaseName = 'exportar-xml-nfe'
+    from { project(':java:nfe-core').sourceSets.main.output }
+}
